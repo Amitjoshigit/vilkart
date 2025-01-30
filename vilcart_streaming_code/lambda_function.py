@@ -35,7 +35,7 @@ def lambda_handler(event, context):
       #
 
         # Ensure all variables are retrieved
-        if not all([kinesis_stream_name, bucket_name, folder_name]):
+        if not all([kinesis_stream_name, bucket_name):
             logger.error("Failed to load configuration from Secrets Manager. Exiting.")
             raise ValueError("Missing required secret values")
         
