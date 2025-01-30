@@ -10,7 +10,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def upload_to_s3(data, file_name, bucket, folder, s3_client):
+def upload_to_s3(data, file_name, bucket, s3_client):
     df = pd.DataFrame(data)
 
     if not df.empty:
@@ -29,7 +29,7 @@ def upload_to_s3(data, file_name, bucket, folder, s3_client):
         buffer.seek(0)
         
         # Upload to S3
-        s3_client.put_object(Bucket=bucket, Key=folder + file_name_with_timestamp, Body=buffer)
+        s3_client.put_object(Bucket=bucket, + file_name_with_timestamp, Body=buffer)
         logger.info(f"Uploaded {file_name_with_timestamp} to S3: {folder + file_name_with_timestamp}")
     else:
         logger.warning(f"No data to upload for {file_name}, DataFrame is empty.")
