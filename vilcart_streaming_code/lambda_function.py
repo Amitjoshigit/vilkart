@@ -11,7 +11,7 @@ logger = setup_logger("LambdaLogger")
 def lambda_handler(event, context):
     # Retrieve environment variables
     #secret_name = os.environ.get('SECRETS_MANAGER_SECRET_NAME')
-    secret_name = "kinesis-sequence_shard-secret"
+    secret_name = "kinesis-sequence-shard-secret"
     logger.info("Starting Lambda function execution.")
     
     # Initialize AWS SDK clients
@@ -28,19 +28,16 @@ def lambda_handler(event, context):
         # Fetch secret values
         logger.info(f"Fetching secret values from Secrets Manager: {secret_name}")
         secret_values = get_secret(secrets_client, secret_name)
-
         # Extract necessary variables from the secret
         kinesis_stream_name = secret_values.get('KINESIS_STREAM_NAME')
         bucket_name = secret_values.get('S3_BUCKET_NAME')
-      #
-
+        
         # Ensure all variables are retrieved
-        if not all([kinesis_stream_name, bucket_name):
+        if not all([kinesis_stream_name, bucket_name]):  # Fixed parentheses here
             logger.error("Failed to load configuration from Secrets Manager. Exiting.")
             raise ValueError("Missing required secret values")
         
         logger.info("Secret values retrieved successfully.")
-
         # Get records from Kinesis
         logger.info(f"Fetching records from Kinesis stream: {kinesis_stream_name}")
         records = get_kinesis_records(kinesis_client, secrets_client, secret_name, kinesis_stream_name)
