@@ -10,7 +10,8 @@ logger = setup_logger("LambdaLogger")
 
 def lambda_handler(event, context):
     # Retrieve environment variables
-    secret_name = os.environ.get('SECRETS_MANAGER_SECRET_NAME')
+    #secret_name = os.environ.get('SECRETS_MANAGER_SECRET_NAME')
+    secret_name = "kinesis-sequence_shard-secret"
     logger.info("Starting Lambda function execution.")
     
     # Initialize AWS SDK clients
@@ -31,7 +32,7 @@ def lambda_handler(event, context):
         # Extract necessary variables from the secret
         kinesis_stream_name = secret_values.get('KINESIS_STREAM_NAME')
         bucket_name = secret_values.get('S3_BUCKET_NAME')
-        folder_name = secret_values.get('S3_FOLDER_NAME')
+      #
 
         # Ensure all variables are retrieved
         if not all([kinesis_stream_name, bucket_name, folder_name]):
@@ -52,8 +53,8 @@ def lambda_handler(event, context):
         
         # Upload processed data to S3
         logger.info("Uploading processed data to S3.")
-        upload_to_s3(order_data, "order_data.parquet", bucket_name, folder_name, s3_client)
-        upload_to_s3(created_by_data, "created_by_data.parquet", bucket_name, folder_name, s3_client)
+        upload_to_s3(order_data, "order_data.parquet", bucket_name, s3_client)
+        upload_to_s3(created_by_data, "created_by_data.parquet", bucket_name, s3_client)
         logger.info("Data uploaded to S3 successfully.")
         
         logger.info("Lambda function completed.")
