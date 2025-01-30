@@ -3,7 +3,7 @@ name: Deploy Lambda Image to ECR
 on:
   push:
     branches:
-      - master  # Trigger the workflow on push to the main branch
+      - master    # Adjust the branch name as needed
 
 jobs:
   deploy:
@@ -23,8 +23,9 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
 
-      # Step 3: Build the Docker image
+      # Step 3: Build the Docker image in the correct directory
       - name: Build Docker image
+        working-directory: vilcart_streaming_code  # Set the correct folder where Dockerfile exists
         run: |
           docker build -t ${{ secrets.AWS_ECR_REPOSITORY_NAME }} .
 
@@ -39,7 +40,6 @@ jobs:
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.AWS_ECR_REPOSITORY_NAME }}:latest
 
       # Step 6: (Optional) Trigger Lambda function invocation to test
-      # Lambda will automatically use the latest pushed image
       - name: Invoke Lambda function
         run: |
           aws lambda invoke \
