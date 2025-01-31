@@ -1,20 +1,28 @@
-name: Deploy Lambda Image to ECR
-
+Copyname: Deploy Lambda Image to ECR
 on:
   push:
     branches:
-      - master    # Adjust the branch name as needed
+      - master
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Authenticate Docker to Amazon ECR
+      # Add these verification steps
+      - name: Verify directory structure
+        run: |
+          echo "Current directory:"
+          pwd
+          echo "\nDirectory contents:"
+          ls -la
+          echo "\nStreaming code directory contents:"
+          ls -la vilcart_streaming_code/
+          echo "\nLambda function content:"
+          cat vilcart_streaming_code/lambda_function.py
+
       - name: Authenticate to Amazon ECR
         run: |
           aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
@@ -23,11 +31,16 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
 
-      # Step 3: Build the Docker image in the correct directory
       - name: Build Docker image
-        working-directory: vilcart_streaming_code  # Set the correct folder where Dockerfile exists
+        working-directory: vilcart_streaming_code
         run: |
+          echo "Building in directory:"
+          pwd
+          echo "\nContents being built:"
+          ls -la
           docker build -t ${{ secrets.AWS_ECR_REPOSITORY_NAME }} .
+          # Verify the image was built
+          docker images
 
       # Step 4: Tag the Docker image
       - name: Tag Docker image
