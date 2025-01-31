@@ -1,8 +1,9 @@
 name: Deploy Lambda Image to ECR
+
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   deploy:
@@ -19,9 +20,9 @@ jobs:
           echo "\nDirectory contents:"
           ls -la
           echo "\nStreaming code directory contents:"
-          ls -la vilcart_streaming_code/
+          ls -la Pictures/vilcart_streaming_code_demo/vilcart_streaming_code/
           echo "\nLambda function content:"
-          cat vilcart_streaming_code/lambda_function.py
+          cat Pictures/vilcart_streaming_code_demo/vilcart_streaming_code/lambda_function.py
 
       - name: Authenticate to Amazon ECR
         run: |
@@ -32,7 +33,7 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
 
       - name: Build Docker image
-        working-directory: vilcart_streaming_code
+        working-directory: Pictures/vilcart_streaming_code_demo/vilcart_streaming_code
         run: |
           echo "Building in directory:"
           pwd
