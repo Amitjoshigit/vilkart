@@ -6,12 +6,12 @@ from f2_transformation import process_kinesis_records
 from f3_load import upload_to_s3
 from custom_logger import setup_logger
 
+# Set up logger for the Lambda function
 logger = setup_logger("LambdaLogger")
 
 def lambda_handler(event, context):
-    # Retrieve environment variables
-    #secret_name = os.environ.get('SECRETS_MANAGER_SECRET_NAME')
-    secret_name = "kinesis-sequence-shard-secret"
+    # Retrieve secret name from environment variables or use a default value
+    secret_name = os.environ.get('SECRETS_MANAGER_SECRET_NAME', 'kinesis-sequence-shard-secret')
     logger.info("Starting Lambda function execution.")
     
     # Initialize AWS SDK clients
@@ -25,20 +25,22 @@ def lambda_handler(event, context):
         raise
 
     try:
-        # Fetch secret values
+        # Fetch secret values from Secrets Manager
         logger.info(f"Fetching secret values from Secrets Manager: {secret_name}")
         secret_values = get_secret(secrets_client, secret_name)
+        
         # Extract necessary variables from the secret
         kinesis_stream_name = secret_values.get('KINESIS_STREAM_NAME')
         bucket_name = secret_values.get('S3_BUCKET_NAME')
         
-        # Ensure all variables are retrieved
-        if not all([kinesis_stream_name, bucket_name]):  # Fixed parentheses here
+        # Ensure all required variables are retrieved
+        if not all([kinesis_stream_name, bucket_name]):
             logger.error("Failed to load configuration from Secrets Manager. Exiting.")
             raise ValueError("Missing required secret values")
         
         logger.info("Secret values retrieved successfully.")
-        # Get records from Kinesis
+        
+        # Get records from Kinesis stream
         logger.info(f"Fetching records from Kinesis stream: {kinesis_stream_name}")
         records = get_kinesis_records(kinesis_client, secrets_client, secret_name, kinesis_stream_name)
         logger.info(f"Successfully fetched {len(records)} records from Kinesis stream.")
@@ -52,16 +54,18 @@ def lambda_handler(event, context):
         logger.info("Uploading processed data to S3.")
         upload_to_s3(order_data, "order_data.parquet", bucket_name, s3_client)
         upload_to_s3(created_by_data, "created_by_data.parquet", bucket_name, s3_client)
+        
         logger.info("Data uploaded to S3 successfully.")
         
-        logger.info("Lambda function completed.")
+        logger.info("Lambda function completed successfully.")
         return {
             'statusCode': 200,
-            'body': json.dumps('Processing completed successfully')
+            'body': json.dumps({'message': 'Processing completed successfully'})
         }
+    
     except Exception as e:
         logger.error(f"Error in Lambda function: {e}")
         return {
             'statusCode': 500,
-            'body': json.dumps(f'Error processing Kinesis records: {str(e)}')
+            'body': json.dumps({'error': str(e)})
         }
