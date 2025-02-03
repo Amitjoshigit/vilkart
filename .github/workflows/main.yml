@@ -12,61 +12,53 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Add these verification steps
-      - name: Verify directory structure
-        run: |
-          echo "Current directory:"
-          pwd
-          echo "\nDirectory contents:"
-          ls -la
-          echo "\nStreaming code directory contents:"
-          ls -la Pictures/vilcart_streaming_code_demo/vilcart_streaming_code/
-          echo "\nLambda function content:"
-          cat Pictures/vilcart_streaming_code_demo/vilcart_streaming_code/lambda_function.py
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Authenticate to Amazon ECR
-        run: |
-          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build Docker image
+      - name: Build and push Docker image
         working-directory: Pictures/vilcart_streaming_code_demo/vilcart_streaming_code
+        env:
+          ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+          ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY_NAME }}
+          IMAGE_TAG: latest
         run: |
-          echo "Building in directory:"
-          pwd
-          echo "\nContents being built:"
-          ls -la
-          docker build -t ${{ secrets.AWS_ECR_REPOSITORY_NAME }} .
-          # Verify the image was built
+          # Build the Docker image
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          
+          # Show built image
           docker images
+          
+          # Push the image
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      # Step 4: Tag the Docker image
-      - name: Tag Docker image
+      - name: Update Lambda function to use latest image
         run: |
-          docker tag ${{ secrets.AWS_ECR_REPOSITORY_NAME }}:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.AWS_ECR_REPOSITORY_NAME }}:latest
+          aws lambda update-function-code \
+            --function-name ${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
+            --image-uri ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.AWS_ECR_REPOSITORY_NAME }}:latest
 
-      # Step 5: Push the Docker image to Amazon ECR
-      - name: Push Docker image to ECR
+      - name: Wait for Lambda update
         run: |
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.AWS_ECR_REPOSITORY_NAME }}:latest
+          aws lambda wait function-updated \
+            --function-name ${{ secrets.AWS_LAMBDA_FUNCTION_NAME }}
 
-      # Step 6: (Optional) Trigger Lambda function invocation to test
-      - name: Invoke Lambda function
+      - name: Test Lambda function
         run: |
           aws lambda invoke \
             --function-name ${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
-            --payload '{"key": "value"}' \
+            --payload '{"SECRETS_MANAGER_SECRET_NAME": "${{ secrets.SECRETS_MANAGER_SECRET_NAME }}"}' \
             --cli-binary-format raw-in-base64-out \
             response.json
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
 
-      # Step 7: Show the Lambda function response (optional)
-      - name: Show Lambda response
+      - name: Display Lambda response and logs
         run: |
+          echo "Lambda Response:"
           cat response.json
